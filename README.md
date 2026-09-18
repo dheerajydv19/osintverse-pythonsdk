@@ -97,6 +97,6 @@ MIT
 
 CI runs lint and tests on every push. PyPI publishes from `.github/workflows/publish.yml` on `v*` tags using [Trusted Publishing](https://docs.pypi.org/trusted-publishers/).
 
-1. On PyPI, add a trusted publisher for project **osintverse**: GitHub repo `dheerajydv19/osintverse-python`, workflow `publish.yml`.
+1. On PyPI, add a pending trusted publisher for project **osintverse**: GitHub owner `dheerajydv19`, repo `osintverse-pythonsdk`, workflow `publish.yml`, environment blank.
 2. Tag a release: `git tag v0.1.0 && git push origin v0.1.0`.
 

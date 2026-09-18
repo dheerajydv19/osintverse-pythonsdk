@@ -27,8 +27,8 @@ dependencies = [
 [project.urls]
 Homepage = "https://osintverse.com"
 Documentation = "https://osintverse.com/docs/python"
-Repository = "https://github.com/dheerajydv19/osintverse-python"
-Issues = "https://github.com/dheerajydv19/osintverse-python/issues"
+Repository = "https://github.com/dheerajydv19/osintverse-pythonsdk"
+Issues = "https://github.com/dheerajydv19/osintverse-pythonsdk/issues"
 
 [project.optional-dependencies]
 dev = [
