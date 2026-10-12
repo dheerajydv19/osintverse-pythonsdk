@@ -8,6 +8,8 @@ pip install osintverse
 
 Python **3.10+**. Talks to `https://apiv1.osintverse.com`. Not affiliated with other products that reuse the OSINTverse name.
 
+For local open-source tools on Linux, [OTinstaller](https://github.com/OSINTVerseHQ/OTinstaller) installs them by name (`pipx install otinstaller`). This client is the SearchIn API, not that installer.
+
 Full guide: [osintverse.com/docs/python](https://osintverse.com/docs/python)
 
 ## Auth
