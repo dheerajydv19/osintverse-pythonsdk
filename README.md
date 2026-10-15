@@ -14,13 +14,23 @@ Full guide: [osintverse.com/docs/python](https://osintverse.com/docs/python)
 
 ## Auth
 
-Create a key at [Dashboard → API keys](https://osintverse.com/dashboard/api) (`ov_` prefix, shown once).
+Sign in once from a terminal. It shows a code, you approve it at osintverse.com/device, and a new key is saved to the same config file the JS CLI uses (`%APPDATA%\osintverse` on Windows, `~/.config/osintverse` elsewhere), so `npx osintverse login` works for both:
+
+```bash
+python -m osintverse login     # --json for agents, --no-browser on servers
+python -m osintverse whoami
+python -m osintverse logout    # forgets the saved key; revoke it in the dashboard
+```
+
+Or create a key at [Dashboard → API keys](https://osintverse.com/dashboard/api) (`ov_` prefix, shown once).
 
 ```python
 from osintverse import OSINTverse
 
-client = OSINTverse()  # OSINTVERSE_API_KEY, or api_key="ov_…"
+client = OSINTverse()  # api_key="ov_…", else OSINTVERSE_API_KEY, else the saved key
 ```
+
+`device_login()` runs the same sign-in from code.
 
 `health()` and `providers.list()` work without a key. Search methods require one.
 
@@ -60,6 +70,7 @@ async with AsyncOSINTverse() as client:
 | --- | --- |
 | `client.health()` | `GET /health` |
 | `client.providers.list()` | `GET /v1/providers` |
+| `client.search.quote(...)` | `POST /v1/search/quote` (never charges) |
 | `client.search.create(...)` | `POST /v1/search` |
 | `client.search.bulk(...)` | `POST /v1/search/bulk` |
 | `client.search.retrieve(id)` | `GET /v1/search/{id}` |
@@ -80,6 +91,16 @@ client.search.unlock(search.id)   # LeakRadar leftover credentials
 client.search.premium(search.id)  # OSINT Industries premium modules
 ```
 
+Quote before you run, and stop when the wallet is short:
+
+```python
+quote = client.search.quote(provider="leakradar-lite", input_type="email", count=2)
+if not quote.sufficient_balance:
+    print(f"Add ${quote.shortfall_usd} at {quote.top_up_url}")
+```
+
+Every `create` sends an `Idempotency-Key` (a fresh UUID unless you pass `idempotency_key=`). Pass your own and reuse it when you retry after a timeout, and the API returns the original search instead of charging again.
+
 `wait=True` on **create** raises `SearchFailedError` / `SearchRefundedError` if the job ends `failed` or `refunded`. Bulk wait polls running jobs and returns the batch — inspect `summary` for partial success (max 50 queries, 100 jobs).
 
 This package is **SearchIn lookups only**. GraphIn (canvas, path, share) is the web desk.
@@ -92,8 +113,11 @@ This package is **SearchIn lookups only**. GraphIn (canvas, path, share) is the 
 | 402 | `PaymentRequiredError` |
 | 403 | `ForbiddenError` |
 | 404 | `NotFoundError` |
+| 409 | `ConflictError` (idempotency key reused for a different search) |
 | 422 | `ValidationError` |
 | 5xx | `APIError` |
+
+Every `APIError` has `status_code`, `detail`, and, when the API sends them, `code` (for example `insufficient_balance`) and `hint` (what to do next).
 
 Job `status: failed` / `refunded` on HTTP 200 raise `SearchFailedError` / `SearchRefundedError` when you pass `wait=True` on create. Poll timeout raises `WaitTimeoutError`.
 

@@ -7,6 +7,7 @@ import httpx
 from osintverse._exceptions import (
     APIError,
     AuthenticationError,
+    ConflictError,
     ForbiddenError,
     NotFoundError,
     PaymentRequiredError,
@@ -21,6 +22,9 @@ def extract_detail(response: httpx.Response) -> str:
         text = response.text.strip()
         return text or f"HTTP {response.status_code}"
 
+    error = payload.get("error") if isinstance(payload, dict) else None
+    if isinstance(error, dict) and isinstance(error.get("message"), str) and error["message"]:
+        return error["message"]
     detail = payload.get("detail") if isinstance(payload, dict) else payload
     if isinstance(detail, str) and detail:
         return detail
@@ -65,6 +69,7 @@ def raise_for_status(response: httpx.Response) -> None:
         402: PaymentRequiredError,
         403: ForbiddenError,
         404: NotFoundError,
+        409: ConflictError,
         422: ValidationError,
     }
     error_cls = mapping.get(response.status_code, APIError)

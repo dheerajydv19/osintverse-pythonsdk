@@ -21,6 +21,16 @@ class APIError(OSINTverseError):
         self.status_code = status_code
         self.body = body
         self.detail = message
+        error = body.get("error") if isinstance(body, dict) else None
+        error = error if isinstance(error, dict) else {}
+        #: Stable machine-readable code, e.g. ``insufficient_balance``, ``not_found``, ``conflict``.
+        self.code: str | None = error.get("code") if isinstance(error.get("code"), str) else None
+        #: What to do next, when the API suggests something.
+        self.hint: str | None = error.get("hint") if isinstance(error.get("hint"), str) else None
+
+
+class ConflictError(APIError):
+    """Idempotency-Key reused for a different search (HTTP 409)."""
 
 
 class AuthenticationError(APIError):

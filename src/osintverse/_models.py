@@ -81,6 +81,24 @@ class Search(BaseModel):
         return self.status == "running"
 
 
+class Quote(BaseModel):
+    """Price of a lookup and whether the wallet can pay (``POST /v1/search/quote``)."""
+
+    model_config = ConfigDict(extra="allow")
+
+    provider: str
+    input_type: str
+    count: int
+    premium: bool
+    available: bool
+    unit_cost_usd: str
+    total_cost_usd: str
+    balance_usd: str
+    sufficient_balance: bool
+    shortfall_usd: str
+    top_up_url: str
+
+
 class BulkSummary(BaseModel):
     model_config = ConfigDict(extra="allow")
 

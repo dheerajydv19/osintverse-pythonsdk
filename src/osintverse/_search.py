@@ -1,17 +1,39 @@
 from __future__ import annotations
 
 import time
+import uuid
 from collections.abc import Sequence
 from typing import Any
 
 from osintverse._constants import DEFAULT_POLL_INTERVAL, DEFAULT_WAIT_TIMEOUT, TERMINAL_STATUSES
 from osintverse._exceptions import SearchFailedError, SearchRefundedError, WaitTimeoutError
-from osintverse._models import BulkSearch, BulkSummary, Search
+from osintverse._models import BulkSearch, BulkSummary, Quote, Search
 
 
 class SearchResource:
     def __init__(self, client: Any) -> None:
         self._client = client
+
+    def quote(
+        self,
+        *,
+        provider: str,
+        input_type: str,
+        premium: bool = False,
+        count: int = 1,
+    ) -> Quote:
+        """Price ``count`` lookups and check the wallet. Never charges."""
+        payload = self._client.request(
+            "POST",
+            "/v1/search/quote",
+            json={
+                "provider": provider,
+                "input_type": input_type,
+                "premium": premium,
+                "count": count,
+            },
+        )
+        return Quote.model_validate(payload)
 
     def create(
         self,
@@ -20,6 +42,7 @@ class SearchResource:
         input_type: str,
         query: str,
         premium: bool = False,
+        idempotency_key: str | None = None,
         wait: bool = False,
         poll_interval: float = DEFAULT_POLL_INTERVAL,
         timeout: float = DEFAULT_WAIT_TIMEOUT,
@@ -36,7 +59,10 @@ class SearchResource:
         }
         if premium:
             body["premium"] = True
-        search = Search.model_validate(self._client.request("POST", "/v1/search", json=body))
+        # A retry with the same key returns the original search instead of charging again.
+        headers = {"Idempotency-Key": idempotency_key or str(uuid.uuid4())}
+        payload = self._client.request("POST", "/v1/search", json=body, headers=headers)
+        search = Search.model_validate(payload)
         if wait:
             return self.wait(search, poll_interval=poll_interval, timeout=timeout)
         return search

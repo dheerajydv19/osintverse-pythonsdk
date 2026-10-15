@@ -1,18 +1,40 @@
 from __future__ import annotations
 
 import asyncio
+import uuid
 from collections.abc import Sequence
 from typing import Any
 
 from osintverse._constants import DEFAULT_POLL_INTERVAL, DEFAULT_WAIT_TIMEOUT, TERMINAL_STATUSES
 from osintverse._exceptions import WaitTimeoutError
-from osintverse._models import BulkSearch, Search
+from osintverse._models import BulkSearch, Quote, Search
 from osintverse._search import _raise_if_unsuccessful, _summarize
 
 
 class AsyncSearchResource:
     def __init__(self, client: Any) -> None:
         self._client = client
+
+    async def quote(
+        self,
+        *,
+        provider: str,
+        input_type: str,
+        premium: bool = False,
+        count: int = 1,
+    ) -> Quote:
+        """Price ``count`` lookups and check the wallet. Never charges."""
+        payload = await self._client.request(
+            "POST",
+            "/v1/search/quote",
+            json={
+                "provider": provider,
+                "input_type": input_type,
+                "premium": premium,
+                "count": count,
+            },
+        )
+        return Quote.model_validate(payload)
 
     async def create(
         self,
@@ -21,6 +43,7 @@ class AsyncSearchResource:
         input_type: str,
         query: str,
         premium: bool = False,
+        idempotency_key: str | None = None,
         wait: bool = False,
         poll_interval: float = DEFAULT_POLL_INTERVAL,
         timeout: float = DEFAULT_WAIT_TIMEOUT,
@@ -33,7 +56,10 @@ class AsyncSearchResource:
         }
         if premium:
             body["premium"] = True
-        search = Search.model_validate(await self._client.request("POST", "/v1/search", json=body))
+        # A retry with the same key returns the original search instead of charging again.
+        headers = {"Idempotency-Key": idempotency_key or str(uuid.uuid4())}
+        payload = await self._client.request("POST", "/v1/search", json=body, headers=headers)
+        search = Search.model_validate(payload)
         if wait:
             return await self.wait(search, poll_interval=poll_interval, timeout=timeout)
         return search

@@ -6,6 +6,7 @@ from typing import Any
 import httpx
 
 from osintverse._async_search import AsyncSearchResource
+from osintverse._config import saved_api_key
 from osintverse._constants import (
     API_KEY_ENV,
     DEFAULT_BASE_URL,
@@ -41,7 +42,10 @@ class AsyncOSINTverse:
         timeout: float = DEFAULT_TIMEOUT,
         http_client: httpx.AsyncClient | None = None,
     ) -> None:
-        self.api_key = api_key if api_key is not None else os.environ.get(API_KEY_ENV)
+        # Explicit key, then OSINTVERSE_API_KEY, then the key saved by `osintverse login`.
+        if api_key is None:
+            api_key = os.environ.get(API_KEY_ENV) or saved_api_key()
+        self.api_key = api_key
         self.base_url = base_url.rstrip("/")
         self._owns_http_client = http_client is None
         self._http = http_client or httpx.AsyncClient(
@@ -64,8 +68,9 @@ class AsyncOSINTverse:
         *,
         json: dict[str, Any] | None = None,
         auth: bool = True,
+        headers: dict[str, str] | None = None,
     ) -> Any:
-        headers: dict[str, str] = {}
+        headers = dict(headers or {})
         if auth:
             if not self.api_key:
                 raise AuthenticationError(
