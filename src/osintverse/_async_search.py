@@ -15,6 +15,11 @@ class AsyncSearchResource:
     def __init__(self, client: Any) -> None:
         self._client = client
 
+    async def webhook_secret(self) -> str:
+        """Secret for verifying ``callback_url`` events. One per wallet."""
+        payload = await self._client.request("GET", "/v1/webhooks/secret")
+        return str(payload["secret"])
+
     async def quote(
         self,
         *,
@@ -44,6 +49,7 @@ class AsyncSearchResource:
         query: str,
         premium: bool = False,
         idempotency_key: str | None = None,
+        callback_url: str | None = None,
         wait: bool = False,
         poll_interval: float = DEFAULT_POLL_INTERVAL,
         timeout: float = DEFAULT_WAIT_TIMEOUT,
@@ -56,6 +62,9 @@ class AsyncSearchResource:
         }
         if premium:
             body["premium"] = True
+        if callback_url:
+            # Signed POST when the search settles; verify with osintverse.verify_webhook.
+            body["callback_url"] = callback_url
         # A retry with the same key returns the original search instead of charging again.
         headers = {"Idempotency-Key": idempotency_key or str(uuid.uuid4())}
         payload = await self._client.request("POST", "/v1/search", json=body, headers=headers)
@@ -71,6 +80,7 @@ class AsyncSearchResource:
         queries: Sequence[str],
         providers: Sequence[str],
         premium: bool = False,
+        callback_url: str | None = None,
         wait: bool = False,
         poll_interval: float = DEFAULT_POLL_INTERVAL,
         timeout: float = DEFAULT_WAIT_TIMEOUT,
@@ -83,6 +93,8 @@ class AsyncSearchResource:
         }
         if premium:
             body["premium"] = True
+        if callback_url:
+            body["callback_url"] = callback_url
         batch = BulkSearch.model_validate(
             await self._client.request("POST", "/v1/search/bulk", json=body)
         )

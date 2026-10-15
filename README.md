@@ -71,6 +71,7 @@ async with AsyncOSINTverse() as client:
 | `client.health()` | `GET /health` |
 | `client.providers.list()` | `GET /v1/providers` |
 | `client.search.quote(...)` | `POST /v1/search/quote` (never charges) |
+| `client.search.webhook_secret()` | `GET /v1/webhooks/secret` |
 | `client.search.create(...)` | `POST /v1/search` |
 | `client.search.bulk(...)` | `POST /v1/search/bulk` |
 | `client.search.retrieve(id)` | `GET /v1/search/{id}` |
@@ -104,6 +105,29 @@ Every `create` sends an `Idempotency-Key` (a fresh UUID unless you pass `idempot
 `wait=True` on **create** raises `SearchFailedError` / `SearchRefundedError` if the job ends `failed` or `refunded`. Bulk wait polls running jobs and returns the batch — inspect `summary` for partial success (max 50 queries, 100 jobs).
 
 This package is **SearchIn lookups only**. GraphIn (canvas, path, share) is the web desk.
+
+## Webhooks
+
+Pass `callback_url` to `create` or `bulk` and the API POSTs a signed event there when each search completes, fails, or is refunded, so you need not poll. The event has ids, status, and cost, never the query or results; fetch those with `retrieve`.
+
+```python
+from osintverse import OSINTverse, verify_webhook
+
+client = OSINTverse()
+secret = client.search.webhook_secret()  # once; one per wallet
+client.search.create(
+    provider="facecheck",
+    input_type="image",
+    query="https://example.com/photo.jpg",
+    callback_url="https://hooks.example.com/osintverse",
+)
+
+# In your web handler, with the raw body:
+event = verify_webhook(secret, request.headers, request.body)  # raises WebhookVerificationError
+search = client.search.retrieve(event["data"]["id"])
+```
+
+The URL must be public `https` on port 443. Events follow [Standard Webhooks](https://www.standardwebhooks.com); details at [osintverse.com/docs/api/search](https://osintverse.com/docs/api/search#webhooks).
 
 ## Errors
 

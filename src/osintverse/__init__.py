@@ -34,6 +34,7 @@ from osintverse._models import (
     Search,
     SearchStatus,
 )
+from osintverse._webhooks import WebhookVerificationError, verify_webhook
 
 __all__ = [
     "APIError",
@@ -60,9 +61,11 @@ __all__ = [
     "SearchStatus",
     "ValidationError",
     "WaitTimeoutError",
+    "WebhookVerificationError",
     "__version__",
     "config_path",
     "delete_credentials",
     "device_login",
     "read_credentials",
+    "verify_webhook",
 ]
